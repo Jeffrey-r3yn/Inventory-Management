@@ -1,0 +1,45 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+const manager = '11111111-1111-1111-1111-111111111111';
+const staff = '22222222-2222-2222-2222-222222222222';
+const other = '33333333-3333-3333-3333-333333333333';
+const brand = '44444444-4444-4444-4444-444444444444';
+const item = '55555555-5555-5555-5555-555555555555';
+const tx = '66666666-6666-6666-6666-666666666666';
+test('Supabase schema: RLS, atomic stock, retries, and role boundaries', async () => {
+ const db = new PGlite();
+ try {
+  await db.exec(`create role anon; create role authenticated; create schema auth;
+  create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
+  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+  grant usage on schema auth to authenticated,anon; grant execute on function auth.uid() to authenticated,anon;`);
+  const schema = await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8');
+  await db.exec(schema); await db.exec(schema); // migration is repeatable
+  await db.exec(`insert into auth.users(id,email) values('${manager}','manager@example.com'),('${staff}','staff@example.com'),('${other}','other@example.com');
+   update public.inventory_users set role='manager' where id='${manager}';
+   insert into public.inventory_brands(id,name,status,created_by,assigned_staff) values('${brand}','Test','active','${manager}',array['${staff}']::uuid[]);
+   insert into public.inventory_items(id,brand_id,sku,name,current_stock) values('${item}','${brand}','TEST','Test item',10);`);
+  await db.exec(`set role anon;`);
+  await assert.rejects(db.query('select * from public.inventory_items'), /permission denied/);
+  await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${staff}',false);`);
+  assert.equal((await db.query('select * from public.inventory_items')).rows.length,1);
+  const rpc = (id,qty,type='OUT') => db.query(`select public.inventory_record_transaction($1,$2,$3,$4,'test',now())`,[id,item,type,qty]);
+  await rpc(tx,3); await rpc(tx,3);
+  assert.equal((await db.query('select current_stock from public.inventory_items')).rows[0].current_stock,7);
+  assert.equal((await db.query('select * from public.inventory_transactions')).rows.length,1);
+  await assert.rejects(rpc(tx,2), /ID transaksi sudah digunakan/);
+  await assert.rejects(rpc('77777777-7777-7777-7777-777777777777',8), /Stok tidak mencukupi/);
+  assert.equal((await db.query('select current_stock from public.inventory_items')).rows[0].current_stock,7);
+  await assert.rejects(rpc('77777777-7777-7777-7777-777777777777',2,'ADJUST'), /manager/);
+  await assert.rejects(db.query('update public.inventory_items set current_stock=999'), /permission denied/);
+  assert.equal((await db.query(`update public.inventory_users set role='manager' where id='${staff}' returning *`)).rows.length,0);
+  await db.exec(`select set_config('request.jwt.claim.sub','${other}',false);`);
+  assert.equal((await db.query('select * from public.inventory_items')).rows.length,0);
+  await assert.rejects(rpc('77777777-7777-7777-7777-777777777777',1), /Barang tidak tersedia/);
+  await db.exec(`select set_config('request.jwt.claim.sub','${manager}',false);`);
+  await rpc('88888888-8888-8888-8888-888888888888',2,'ADJUST');
+  assert.equal((await db.query('select current_stock from public.inventory_items')).rows[0].current_stock,9);
+ } finally { await db.close(); }
+});
