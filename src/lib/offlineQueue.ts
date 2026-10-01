@@ -1,12 +1,14 @@
 import { supabase } from './supabase';
 import type { OfflineQueueItem, Transaction } from '../types';
-let storageKey = 'inventory-demo-queue';
+let storageKey = '';
 let flushing: Promise<number> | null = null;
 export function setQueueOwner(id: string) { storageKey = `inventory-queue-${id}`; }
 export function readQueue(): OfflineQueueItem[] {
+  if (!storageKey) return [];
   try { return JSON.parse(localStorage.getItem(storageKey) ?? '[]'); } catch { return []; }
 }
 export function enqueueTransaction(payload: Omit<Transaction, 'id' | 'createdAt' | 'synced'>): OfflineQueueItem {
+  if (!storageKey) throw new Error('Login diperlukan.');
   const item: OfflineQueueItem = { id: crypto.randomUUID(), action: 'transaction', payload, timestamp: new Date().toISOString() };
   localStorage.setItem(storageKey, JSON.stringify([...readQueue(), item]));
   return item;

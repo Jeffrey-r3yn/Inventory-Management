@@ -31,7 +31,7 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthGate>{profile => <AppProvider key={profile?.id ?? "demo"} profile={profile}>
+    <AuthGate>{profile => <AppProvider key={profile.id} profile={profile}>
       <AppContent />
     </AppProvider>}</AuthGate>
   );

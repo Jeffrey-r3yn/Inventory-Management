@@ -25,6 +25,9 @@ test('Supabase schema: RLS, atomic stock, retries, and role boundaries', async (
   await assert.rejects(db.query('select * from public.inventory_items'), /permission denied/);
   await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${staff}',false);`);
   assert.equal((await db.query('select * from public.inventory_items')).rows.length,1);
+  assert.equal((await db.query('select * from public.inventory_users')).rows.length,1);
+  await assert.rejects(db.query(`insert into public.inventory_items(brand_id,sku,name) values('${brand}','UNAUTHORIZED','Blocked')`), /row-level security/);
+  assert.equal((await db.query(`update public.inventory_brands set assigned_staff = array['${other}']::uuid[] where id='${brand}' returning *`)).rows.length,0);
   const rpc = (id,qty,type='OUT') => db.query(`select public.inventory_record_transaction($1,$2,$3,$4,'test',now())`,[id,item,type,qty]);
   await rpc(tx,3); await rpc(tx,3);
   assert.equal((await db.query('select current_stock from public.inventory_items')).rows[0].current_stock,7);
@@ -41,5 +44,8 @@ test('Supabase schema: RLS, atomic stock, retries, and role boundaries', async (
   await db.exec(`select set_config('request.jwt.claim.sub','${manager}',false);`);
   await rpc('88888888-8888-8888-8888-888888888888',2,'ADJUST');
   assert.equal((await db.query('select current_stock from public.inventory_items')).rows[0].current_stock,9);
+  await db.exec(`update public.inventory_brands set assigned_staff='{}' where id='${brand}'; select set_config('request.jwt.claim.sub','${staff}',false);`);
+  assert.equal((await db.query('select * from public.inventory_items')).rows.length,0);
+  await assert.rejects(rpc('99999999-9999-9999-9999-999999999999',1), /Barang tidak tersedia/);
  } finally { await db.close(); }
 });

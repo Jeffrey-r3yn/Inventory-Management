@@ -16,8 +16,9 @@ npm run build
 npm test
 ```
 
-Tanpa konfigurasi Supabase, aplikasi memakai **mode demo lokal**. Perubahan demo
-tersimpan di localStorage; mode ini tidak menyimpan data ke server.
+Aplikasi hanya menggunakan database Supabase yang dikonfigurasi. Tanpa konfigurasi
+database, aplikasi berhenti pada layar konfigurasi; tidak ada mode demo atau data contoh.
+Login wajib. Database kosong akan ditampilkan sebagai inventaris kosong.
 Checkout cloud sudah terisolasi: gunakan checkout yang tersedia, tanpa membuat worktree.
 
 ## Supabase (proyek yang sudah ada)
@@ -70,8 +71,8 @@ HTTPS tetap diperlukan; berkas konfigurasi saja tidak membuktikan kedua layanan 
 Manifest, ikon PNG asli 192/512, dan service worker disertakan. Build meng-cache
 shell aplikasi; API Supabase dan kredensial tidak masuk precache. Untuk pemasangan,
 buka deployment HTTPS dan gunakan **Install app / Add to Home Screen** dari browser.
-Service worker otomatis diperbarui. Cache inventaris dan antrean disimpan pada perangkat;
-hapus data situs melalui pengaturan browser bila perangkat akan dipindahtangankan.
+Service worker otomatis diperbarui. Hanya antrean transaksi yang disimpan pada perangkat, terpisah per akun.
+Data inventaris dimuat ulang dari database setelah login; cache data demo lama dihapus otomatis.
 
 ```bash
 npm run build
@@ -84,15 +85,16 @@ npm run test:pwa
 berulang, RLS, role, transaksi atomik, dan retry idempotent. Ini tidak menguji proyek
 Supabase jarak jauh. `npm run test:pwa` memakai Chromium di `/usr/bin/chromium`
 bila tersedia; alternatifnya jalankan `npx playwright install chromium` atau set
-`CHROMIUM_EXECUTABLE_PATH`. Pengujian browser memeriksa tambah item, stok masuk,
-penolakan stok berlebih, persistensi, ukuran ikon, tampilan mobile, dan reload offline.
-`TEST_BASE_URL` dapat digunakan untuk menguji server preview lain (mode demo).
+`CHROMIUM_EXECUTABLE_PATH`. Pengujian browser memeriksa login wajib, penghapusan cache demo lama, ukuran ikon,
+tampilan mobile, dan reload shell login saat offline tanpa menampilkan inventaris.
+`TEST_BASE_URL` dapat digunakan untuk menguji server preview lain (tanpa sesi login).
 
 ## Batasan offline
 
 Login awal dan pengelolaan brand/item/staff memerlukan koneksi. Sesudah login,
-PWA dapat memuat shell dan cache yang tersimpan, serta mengantrekan transaksi stok.
-Saat koneksi pulih atau aplikasi dibuka ulang, antrean dikirim dan stok dimuat ulang.
+PWA dapat memuat shell login saat offline. Pada sesi yang sudah aktif, transaksi
+dapat diantrekan terhadap inventaris yang sebelumnya dimuat dari server. Reload
+inventaris memerlukan koneksi agar izin terkini dapat diperiksa oleh database.
+Saat koneksi pulih atau aplikasi dibuka ulang setelah login, antrean dikirim dan stok dimuat ulang.
 Perubahan offline masih dapat ditolak server bila stok atau penugasan berubah;
-transaksi tetap tertunda dan pesan kesalahan ditampilkan. Mode demo tidak mengirim
-transaksi ke Supabase. Ekspor/penyelesaian antrean yang ditolak belum tersedia di UI.
+transaksi tetap tertunda dan pesan kesalahan ditampilkan. Ekspor/penyelesaian antrean yang ditolak belum tersedia di UI.

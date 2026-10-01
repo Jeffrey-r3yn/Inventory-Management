@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
@@ -13,9 +13,8 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, currentPage, onNavigate }: LayoutProps) {
-  const { currentUser, users, isOnline, offlineQueueCount, switchUser, brands, error, loading } = useApp();
+  const { currentUser, isOnline, offlineQueueCount, brands, error, loading } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const pendingBrands = brands.filter(b => b.status === 'pending').length;
 
   const navItems = [
@@ -59,42 +58,9 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
           ))}
         </nav>
 
-        {/* Role Switcher */}
-        <div className="p-3 border-t border-gray-200">
-          <div className="relative">
-            <button
-              onClick={() => !isSupabaseConfigured && setRoleSwitcherOpen(!roleSwitcherOpen)}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                currentUser.role === 'manager' ? 'bg-purple-100' : 'bg-green-100'
-              }`}>
-                {currentUser.role === 'manager' ? <Shield className="w-4 h-4 text-purple-600" /> : <User className="w-4 h-4 text-green-600" />}
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-gray-900">{currentUser.fullName}</p>
-                <p className="text-xs text-gray-500 capitalize">{currentUser.role === 'manager' ? 'Manager' : 'Staff Gudang'}</p>
-              </div>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </button>
-            {roleSwitcherOpen && !isSupabaseConfigured && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 max-h-64 overflow-y-auto">
-                {(isSupabaseConfigured ? [] : users).map(user => (
-                  <button
-                    key={user.id}
-                    onClick={() => { switchUser(user.id); setRoleSwitcherOpen(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${user.id === currentUser.id ? 'bg-blue-50' : ''}`}
-                  >
-                    {user.role === 'manager'
-                      ? <Shield className="w-4 h-4 text-purple-600" />
-                      : <User className="w-4 h-4 text-green-600" />}
-                    <span className="flex-1 truncate">{user.fullName}</span>
-                    <span className="text-[10px] text-gray-400 uppercase">{user.role}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="p-4 border-t border-gray-200">
+          <p className="text-sm font-medium text-gray-900">{currentUser.fullName}</p>
+          <p className="text-xs text-gray-500">{currentUser.role === 'manager' ? 'Manager' : 'Staff Gudang'}</p>
         </div>
       </aside>
 
@@ -153,35 +119,15 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
                 </button>
               ))}
             </nav>
-            <div className="p-3 border-t border-gray-200 mt-auto">
-              <p className="text-xs text-gray-500 px-3 mb-2">{isSupabaseConfigured ? currentUser.fullName : "Ganti User Aktif"}</p>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {(isSupabaseConfigured ? [] : users).map(user => (
-                  <button
-                    key={user.id}
-                    onClick={() => { switchUser(user.id); setSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-sm ${
-                      user.id === currentUser.id ? 'bg-blue-50 text-blue-700 font-medium' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    {user.role === 'manager'
-                      ? <Shield className="w-4 h-4 text-purple-600" />
-                      : <User className="w-4 h-4 text-green-600" />}
-                    <span className="flex-1 truncate text-left">{user.fullName}</span>
-                    <span className="text-[10px] uppercase text-gray-400">{user.role}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <div className="p-4 border-t border-gray-200"><p className="text-sm font-medium">{currentUser.fullName}</p><p className="text-xs text-gray-500">{currentUser.role}</p></div>
           </div>
         </div>
       )}
 
-      {isSupabaseConfigured && <button onClick={() => void supabase?.auth.signOut()} className="fixed top-3 right-4 z-40 bg-white border rounded-lg px-3 py-1.5 text-sm">Keluar</button>}
+      {<button onClick={() => void supabase?.auth.signOut()} className="fixed top-3 right-4 z-40 bg-white border rounded-lg px-3 py-1.5 text-sm">Keluar</button>}
       {/* Main Content */}
       <main className="flex-1 md:ml-64">
         <div className="pt-14 md:pt-0 pb-20 md:pb-0">
-          {!isSupabaseConfigured && <div className="bg-amber-50 text-amber-800 px-6 py-3 text-sm">Mode demo — data disimpan di perangkat ini. Supabase belum terhubung.</div>}
           {error && <div role="alert" className="bg-red-50 text-red-700 px-6 py-3 text-sm">{error}</div>}
           {loading && <div className="px-6 py-3 text-sm text-gray-500">Memuat inventaris…</div>}
           {children}

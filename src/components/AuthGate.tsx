@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, TABLES } from '../lib/supabase';
 import type { User } from '../types';
-export default function AuthGate({ children }: { children: (profile?: User) => ReactNode }) {
+export default function AuthGate({ children }: { children: (profile: User) => ReactNode }) {
  const [session, setSession] = useState<Session | null>(null);
  const [profile, setProfile] = useState<User>();
  const [loading, setLoading] = useState(Boolean(supabase));
@@ -38,7 +38,7 @@ export default function AuthGate({ children }: { children: (profile?: User) => R
   } catch { setError('Tidak dapat menghubungi layanan login.'); }
   finally { setBusy(false); }
  };
- if (!supabase) return children();
+ if (!supabase) return <main className="min-h-screen bg-gray-50 grid place-items-center p-6"><div role="alert" className="max-w-md bg-white rounded-xl border p-8"><h1 className="text-xl font-bold">Database belum dikonfigurasi</h1><p className="mt-3 text-gray-600">Hubungi pengelola untuk menghubungkan database Supabase. Aplikasi tidak menampilkan data contoh.</p></div></main>;
  if (loading) return <p className="p-8 text-gray-600">Memuat akun…</p>;
  if (session && profile) return children(profile);
  return <main className="min-h-screen bg-gray-50 grid place-items-center p-6"><form onSubmit={login} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-sm space-y-5">
